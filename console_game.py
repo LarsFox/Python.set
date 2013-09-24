@@ -1,12 +1,6 @@
-# make card
-# make card printing
-# make check whether the cards make set or not
-
-# make random table
-# make deck
-# make check whether there's set or not
-
-# q: quantity, c: colour, f: fill, s: shape
+# this thing can be used only in console
+# that is why it is kept.
+# only right formats are accepted, I don't want to fix it now.
 from sys import exit
 from random import choice, shuffle
 
@@ -16,7 +10,7 @@ class Game():
 
     def __init__(self):
         self.deck = [Card(q, c, f, s)
-            for q in qs for c in cs for f in fs for s in ss]
+            for q in quantity for c in colours for f in fill for s in shapes]
         self.table, self.gone = [], []
 
     def is_set(self, ca):
@@ -44,7 +38,6 @@ class Game():
                 self.table += self.deck[:3]
                 self.deck = self.deck[3:]
 
-            #print len(self.table), len(self.deck), len(self.gone) # test to see cards moving
             self.print_cards()
             self.action()
 
