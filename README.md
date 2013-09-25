@@ -7,5 +7,3 @@ It just draws some stuff, waits, then dies.<br/>
 Better than blinking with zero cooldown/freezing/lagging etc.<br/>
 <br/>
 Bugged programs must die by themselves.<br/>
-<br/>
-Enjoy!

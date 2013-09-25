@@ -43,23 +43,40 @@ class Game():
             self.draw_cards()
             pg.display.flip()
             done = True         # this thing just draws itself
-        pg.time.wait(1000)      # and then kills itself. Artistic.
+        pg.time.wait(5000)      # and then kills itself. Artistic.
 
     def draw_cards(self):
-        if len(self.engine.table) == 15: card_position['X'] -= 55
-        card_x, card_y = card_position['X'], card_position['Y']
-        for row in xrange(0, len(self.engine.table), 4):
-            for column in xrange(4):
-                card = self.engine.table[row+column]
-                self.screen.blit(card.image, (card_x, card_y))
-                # dot is only to calibrate the scales for the missing images
-                self.screen.blit(card.dot, (
-                    card_x+card_width/2-5, card_y+card_height/2-5))
+        def draw_colour():
+            print card.quantity,
+            for i in xrange(int(card.quantity)):
+            #self.screen.blit(pg.image.load('{}/cards/g.png'.format(filepath)), (card_x, card_y+card_attr['height']/2-30))
+                pg.draw.rect(self.screen, palette[card.colour],
+                    [card_x+add_x, card_y+add_y[card.quantity][i],
+                    symbol_width, symbol_height])
+                self.screen.blit(card.innerimg,
+                    (card_x+add_x, card_y+add_y[card.quantity][i]))
 
-                card_x += card_width + card_space
-            card_y += card_height + card_space
-            card_x = card_position['X']
-        if len(self.engine.table) == 15: card_position['X'] += 55
+        # these two checks move the whole table, so it looks much better.
+        if len(self.engine.table) == 15:
+            card_attr['X'] += 55
+            card_attr['in_row'] += 1
+
+        # this lets to make 2D array from deck
+        card_x, card_y = card_attr['X'], card_attr['Y']
+        for row in xrange(0, len(self.engine.table), card_attr['in_row']):
+            for column in xrange(card_attr['in_row']):
+                card = self.engine.table[row+column]
+                self.screen.blit(empty_card, (card_x, card_y))
+
+                draw_colour()
+                
+                card_x += card_attr['width'] + card_attr['space']
+            card_y += card_attr['height'] + card_attr['space']
+            card_x = card_attr['X']
+
+        if len(self.engine.table) == 15:
+            card_attr['X'] -= 55
+            card_attr['in_row'] -= 1
 
 if __name__ == "__main__":
     game = Game()
