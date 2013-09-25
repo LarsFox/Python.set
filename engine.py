@@ -78,7 +78,7 @@ class Engine():
                         return True
         return False
 
-engine = Engine()
+#engine = Engine()
 
 #try: engine.launch()
 #except EOFError: print "Bye!"
