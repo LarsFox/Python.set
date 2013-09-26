@@ -1,4 +1,3 @@
-# probably it's better to unite with data.
 from sys import exit
 from random import choice, shuffle
 
@@ -36,7 +35,3 @@ class Engine():
                         return i+1, j+1, k+1 # cheat by pressing Up
                         return True
         return False
-
-#engine = Engine()
-#try: engine.launch()
-#except EOFError: print "Bye!"
