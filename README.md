@@ -1,9 +1,6 @@
-This "game" uses pygame.<br/>
+Uses pygame (http://www.pygame.org/).<br/>
 <br/>
-You can download it from... well, I'll attach link a bit later<br/>
-Still. This thing does not work!<br/>
-It just draws some stuff, waits, then dies.<br/>
+This thing crashes after a while<br/>
+Probably because it's not that clear for me how to "draw" objects.<br/>
 <br/>
-Better than blinking with zero cooldown/freezing/lagging etc.<br/>
-<br/>
-Bugged programs must die by themselves.<br/>
+Bugged programs must die by themselves. This one dies. Yet.<br/>
