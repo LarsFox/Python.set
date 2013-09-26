@@ -1,5 +1,4 @@
-# this thing is commented to prevent pygame from crashing
-
+# probably it's better to unite with data.
 from sys import exit
 from random import choice, shuffle
 
@@ -12,44 +11,29 @@ class Engine():
             for q in quantity for c in colours for f in fill for s in shapes]
         self.table, self.gone = [], []
 
-    def is_set(self, ca):
+    def is_set(self, array):   # checking for Set with the set HAHAHA
         for i in xrange(4):
-            if len(set([card.attr[i] for card in ca])) == 2: return False
+            if len(set([card.attr[i] for card in array])) == 2: return False
         return True
 
     def launch(self):
         shuffle(self.deck)
         self.table, self.deck = self.deck[:12], self.deck[12:]
 
-    def check(self): # reshufflinging if no sets.
-        while not self.has_set(self.table):
-            self.table += self.deck[:3]
-            self.deck = self.deck[3:]
-            if len(self.table) == 15:
-                print '15 cards and no set!'
-                self.deck += self.table
-                self.table = []
-                self.launch()
-
-    def action(self): # use re and fix any coming errors with wrong format
-        s = raw_input('\nChoose set:\n> ')
-        s = [int(x)-1 for x in s.split()]
-        while not self.is_set([self.table[i] for i in s]):
-            s = raw_input('\nNot a set!\n> ')
-            s = [int(x)-1 for x in s.split()]
-
-        for i in s[::-1]:
-            if len(self.table) <= 12 and self.deck:     # replace card
-                self.gone.append(self.table[i])
-                self.table[i] = self.deck.pop(0)
-            else: self.gone.append(self.table.pop(i))   # no replacements left
+    def action(self, array): # no more than 12 cards (game rules)
+        a = sorted(array, cmp=lambda x, y: y.index-x.index)
+        for card in array:
+            if len(self.table) <= 12 and self.deck:
+                self.gone.append(self.table[card.index])
+                self.table[card.index] = self.deck.pop(0)
+            else: self.gone.append(self.table.pop(card.index))
 
     def has_set(self, array):
         for i in xrange(len(array)):
             for j in xrange(i+1, len(array)):
                 for k in xrange(j+1, len(array)):
                     if self.is_set([array[i], array[j], array[k]]):
-                        print i+1, j+1, k+1 # cheat to see sets easily
+                        return i+1, j+1, k+1 # cheat by pressing Up
                         return True
         return False
 
