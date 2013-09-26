@@ -1,4 +1,5 @@
 # this thing is commented to prevent pygame from crashing
+# move all the inputs one level up
 
 from sys import exit
 from random import choice, shuffle
@@ -18,15 +19,8 @@ class Engine():
         return True
 
     def launch(self):
-        done = False
-        while not done:
-            shuffle(self.deck)
-            self.table, self.deck = self.deck[:12], self.deck[12:]
-            self.turn()
-            #more = raw_input('Want another?\n> ')
-
-            done = True
-            #if not more: exit()
+        shuffle(self.deck)
+        self.table, self.deck = self.deck[:12], self.deck[12:]
 
     def print_cards(self):
         for i in xrange(0, len(self.table), 3):
@@ -34,6 +28,7 @@ class Engine():
                 self.table[i], self.table[i+1], self.table[i+2])
 
     def turn(self):
+        # TEAR THIS INTO GAME
         while self.deck:
             while not self.has_set(self.table):
                 self.table += self.deck[:3]
@@ -47,7 +42,7 @@ class Engine():
 
             break
             #self.print_cards()
-            #self.action()
+            self.action()
 
         #while self.has_set(self.table):
             #self.print_cards()
@@ -79,6 +74,5 @@ class Engine():
         return False
 
 #engine = Engine()
-
 #try: engine.launch()
 #except EOFError: print "Bye!"
