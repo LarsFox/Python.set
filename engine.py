@@ -1,5 +1,4 @@
 # this thing is commented to prevent pygame from crashing
-# move all the inputs one level up
 
 from sys import exit
 from random import choice, shuffle
@@ -22,34 +21,15 @@ class Engine():
         shuffle(self.deck)
         self.table, self.deck = self.deck[:12], self.deck[12:]
 
-    def print_cards(self):
-        for i in xrange(0, len(self.table), 3):
-            print '{0}. {3}\t| {1}. {4}\t| {2}. {5}'.format(i+1, i+2, i+3,
-                self.table[i], self.table[i+1], self.table[i+2])
-
-    def turn(self):
-        # TEAR THIS INTO GAME
-        while self.deck:
-            while not self.has_set(self.table):
-                self.table += self.deck[:3]
-                self.deck = self.deck[3:]
-                if len(self.table) == 15:
-                    # print '15 cards and no set!'
-                    self.deck += self.table
-                    self.table = []
-                    shuffle(deck)
-                    self.table, self.deck = self.deck[:12], self.deck[12:]
-
-            break
-            #self.print_cards()
-            self.action()
-
-        #while self.has_set(self.table):
-            #self.print_cards()
-            #self.action()
-
-        #self.deck, self.table, self.gone, = self.gone + self.table, [], []
-
+    def check(self): # reshufflinging if no sets.
+        while not self.has_set(self.table):
+            self.table += self.deck[:3]
+            self.deck = self.deck[3:]
+            if len(self.table) == 15:
+                print '15 cards and no set!'
+                self.deck += self.table
+                self.table = []
+                self.launch()
 
     def action(self): # use re and fix any coming errors with wrong format
         s = raw_input('\nChoose set:\n> ')
@@ -69,7 +49,7 @@ class Engine():
             for j in xrange(i+1, len(array)):
                 for k in xrange(j+1, len(array)):
                     if self.is_set([array[i], array[j], array[k]]):
-                        #print i+1, j+1, k+1 # cheat to see sets easily
+                        print i+1, j+1, k+1 # cheat to see sets easily
                         return True
         return False
 
