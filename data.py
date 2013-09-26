@@ -18,7 +18,7 @@ display = window_width, window_height = 800, 600
 # card has lots of attributes, so it's better to store them in dict
 card_attr = {
     'width': 106, 'height': 160,
-    'X': 170, 'Y': 15, 'space': 10, 'in_row': 4
+    'X': 170, 'Y': 15, 'space': 10
 }
 empty_card = pg.image.load('{}/cards/card.png'.format(filepath))
 
@@ -51,15 +51,22 @@ class Card(pg.sprite.Sprite):
             self.quantity, self.colour, self.fill, self.shape) = (
             q, c, f, s)
         pg.sprite.Sprite.__init__(self)
+
+    def draw(self, x, y):
+        # the symbol(s) = filled coloured rectangle + alpha-mask over
+        screen = pg.display.get_surface()
         innername = '{}/cards/{}{}.png'.format(
             filepath, self.fill[0], self.shape[0])
-        self.innerimg = pg.image.load(innername)
+        innerimg = pg.image.load(innername)
+        for i in xrange(int(self.quantity)):
+            pg.draw.rect(screen, palette[self.colour],
+                [x+add_x, y+add_y[self.quantity][i],
+                symbol_width, symbol_height])
+            screen.blit(innerimg,
+                (x+add_x, y+add_y[self.quantity][i]))
 
+    ''' MAYBE there will be need in it
     def __str__(self):
         s = ''
         if self.quantity > '1': s = 's'
-        return '{} {} {} {}'.format(*self.attr) + s
-
-    ''' MAYBE there will be need in this thing
-    def draw(self, x, y):
-        self.rect = Rect(x, y, card_attr['width'], card_attr['height'])'''
+        return '{} {} {} {}'.format(*self.attr) + s'''
