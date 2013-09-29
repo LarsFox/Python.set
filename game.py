@@ -1,101 +1,108 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-#
-# The Set game.
-# Dedicated with love to those who I love
-#
-# Gently speaking, I would have done nothing without you.
-# Using pygame (www.pygame.org), python, MS Windows, Paint and food.
-# Leo Motovskikh aka
-# Lars Fox
-#
+import os, itertools, random
+from sys import exit
 
-from engine import *
+import pygame
+from pygame.locals import *
 
-class Game():
+class Card(object):
+    def __init__(self, quantity, colour, fill, shape):
+        self.quantity = quantity
+        self.colour = colour
+        self.fill = fill
+        self.shape = shape
 
+    @property
+    def attr(self):
+        return (self.quantity, self.colour, self.fill, self.shape)
+
+class Board(object):
+    quantity = ('1', '2', '3')
+    colours = ('Red', 'Green', 'Purple')
+    fill = ('empty', 'striped', 'filled')
+    shapes = ('oval', 'squiggle', 'diamond')
+
+    table_size = 12
+    
+    @classmethod
+    def form_deck(cls):
+        return [Card(*attrs) for attrs in
+                itertools.product(cls.quantity, cls.colours,
+                                  cls.fill, cls.shapes)]
+
+    @classmethod
+    def initial(cls):
+        cards = cls.form_deck()
+        random.shuffle(cards)
+        table, deck = cards[:cls.table_size], cards[cls.table_size:]
+        return cls(deck, table)
+
+    def __init__(self, deck, table):
+        self.deck = deck
+        self.table = table
+        self.selected = set()
+
+    def add_cards(self, quantity=3):
+        new_table = self.table + self.deck[:quantity]
+        new_deck = self.deck[quantity:]
+        return Board(new_deck, new_table)
+ 
+    def is_set(self, cards):
+        assert(len(cards) == 3)
+        for i in xrange(4):
+            if len(set(card.attr[i] for card in cards)) == 2:
+                return False
+        return True
+ 
+    def has_set(self):
+        for cards in itertools.combinations(self.table, r=3):
+            if self.is_set(cards):
+                #return [card.attr for card in cards]   # the cheat line
+                return True
+        return False
+ 
+    def remove_set(self, cards):
+        assert(self.is_set(cards))
+        to_del = [i for i in xrange(len(self.table)) if self.table[i] in cards]
+        
+        for i in to_del[::-1]:
+            if self.deck:
+                self.table[i] = self.deck.pop(0)
+            else:
+                self.table.pop(i)
+
+        return Board(self.deck, self.table)
+ 
+    def has_more_turns(self):
+        return self.deck or self.has_set()
+
+class Game(object):
     def __init__(self):
-        pg.init()
-        pg.display.set_caption(name)
-        self.window = pg.display.set_mode(display)
-        self.engine = Engine()
-
-        screen = pg.display.get_surface()
+        self.board = None
+ 
+    def start(self):
+        self.board = Board.initial()
 
     def main(self):
-        self.engine.launch()
-        running = True
-        selected = set()
-        while running:
-            for e in pg.event.get():
-                self.window.fill(palette['Light Grey'])
-                if e.type == QUIT: running = False
-                self.draw_cards()
-                if e.type == MOUSEBUTTONDOWN and e.button == 1:
-                    for card in self.engine.table:
-                        if card.rect.collidepoint(e.pos):
-                            card.selected = not card.selected
-                            selected.add(card)
-
-                # or press Up and see the hint.
-                # sets usually start with the first one
-                if e.type == KEYDOWN and e.key == K_UP:
-                    print self.engine.has_set(self.engine.table)
+        self.start()
+        while True:
+            if self.board.deck:
+                self.check()
             
-            # the game is played until there are no sets
-            if self.engine.has_set(self.engine.table):
-                if len(selected) == 3:
-                    for card in selected:
-                        self.engine.table[card.index].selected = False
+            self.display_board()
 
-                    if self.engine.is_set(selected):
-                        self.engine.action(selected)
+            cards = self.get_user_turn()
+            if cards:
+                self.board = self.board.remove_set(cards)
 
-                    selected.clear()
+            if not self.board.has_more_turns():
+                self.ask_exit()
+ 
+    def check(self):
+        while not self.board.has_set():
+            self.board = self.board.add_cards()
 
-            # but if there're no sets, we add 3 more cards.
-            elif self.engine.deck and len(self.engine.table) <= 12:
-                self.engine.table += self.engine.deck[:3]
-                self.engine.deck = self.engine.deck[3:]
-
-            # in real game we keep adding cards, but that is crazy
-            # to be honest, I don't want to enlarge the game display.
-            elif len(self.engine.table) == 15:
-                print '15 cards and no set! Reshuffling!'
-                self.engine.deck += self.engine.table
-                self.engine.launch()
-
-            # and if all the sets are gone and there's nothing to add: GG
-            else:
-                more = raw_input('Want another?\n> ')
-                if more:
-                    self.engine.deck = self.engine.gone + self.engine.table
-                    self.engine.table, self.engine.gone = [], []
-                    self.engine.launch()
-                else: running = False
-
-    def draw_cards(self):
-        screen = pg.display.get_surface()
-
-        # this makes 2D array from deck
-        rows = len(self.engine.table)/3     # 3/6/9/12/15 cards in 3 rows
-        card_x, card_y = card_attr['X'], card_attr['Y']
-        for row in xrange(0, len(self.engine.table), rows):
-            for column in xrange(rows):
-                i = row + column
-                card = self.engine.table[i]
-                card.index = i
-                card.draw(card_x, card_y)
-                
-                card_x += card_attr['width'] + card_attr['space']
-            card_y += card_attr['height'] + card_attr['space']
-            card_x = card_attr['X']
-
-        pg.display.flip()
-
-if __name__ == "__main__":
-    game = Game()
-    try: game.main()
-    except EOFError: print "Bye!"
-
-pg.quit()
+    def get_user_turn(self):
+        while True:
+            cards = self.ask_for_cards()
+            if self.board.is_set(cards):
+                return cards
