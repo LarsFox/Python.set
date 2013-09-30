@@ -10,7 +10,6 @@ from game import *
 
 game_name = "Set"
 window_size = (800, 600)
-filepath = os.path.dirname(__file__)
 rows = 3
 palette = {
     'Light Grey':   (200, 200, 200),    'Green':        ( 55, 205,  65),
@@ -19,8 +18,8 @@ palette = {
 }
 
 # ================================== Card ==================================
-empty_card = pygame.image.load('{}/images/card.png'.format(filepath))
-selection = pygame.image.load('{}/images/selection.png'.format(filepath))
+empty_card = pygame.image.load('images/card.png')
+selection = pygame.image.load('images/selection.png')
 card_width, card_height, card_space = 106, 160, 10
 card_start_x, card_start_y = 170, 15
 card_attr = {
@@ -29,7 +28,7 @@ card_attr = {
 }
 
 # ============================ Symbols in card =============================
-name_template = '{}/images/{}{}.png'.format
+name_template = 'images/{}{}.png'.format
 symbol_width, symbol_height, symbol_space = 80, 42, 4
 symbol_x = (card_attr['width'] - symbol_width)/2
 symbol_y = {
@@ -51,7 +50,7 @@ class GUICard(Card):
         image.blit(empty_card, (0, 0))
 
         symbol_img = pygame.image.load(name_template(
-            filepath, self.fill[0], self.shape[0]))
+            self.fill[0], self.shape[0]))
 
         for i in xrange(int(self.quantity)):
             x, y = symbol_x, symbol_y[self.quantity][i]
@@ -79,10 +78,10 @@ class Button(object):
         screen.blit(self.image, self.coord)
 
 start_button = Button(
-    pygame.image.load('{}/images/start.png'.format(filepath)), 168)
+    pygame.image.load('images/start.png'), 168)
 
 end_button = Button(
-    pygame.image.load('{}/images/over.png'.format(filepath)), 394)
+    pygame.image.load('images/over.png'), 394)
 
 # ================================== Game ==================================
 class GUIGame(Game):
