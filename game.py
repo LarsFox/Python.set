@@ -1,33 +1,33 @@
-import os, itertools, random
+import os, itertools, random, time
 from sys import exit
 
 import pygame
 from pygame.locals import *
 
 class Card(object):
-    def __init__(self, quantity, colour, fill, shape):
-        self.quantity = quantity
-        self.colour = colour
+    def __init__(self, number, symbol, fill, colour):
+        self.number = number
+        self.symbol = symbol
         self.fill = fill
-        self.shape = shape
+        self.colour = colour
 
     @property
     def attr(self):
-        return (self.quantity, self.colour, self.fill, self.shape)
+        return (self.number, self.symbol, self.fill, self.colour)
 
 class Board(object):
-    quantity = ('1', '2', '3')
-    colours = ('Red', 'Green', 'Purple')
+    numbers = ('1', '2', '3')
+    symbols = ('diamond', 'squiggle', 'oval')
     fill = ('empty', 'striped', 'filled')
-    shapes = ('oval', 'squiggle', 'diamond')
+    colours = ('Red', 'Green', 'Purple')
 
     table_size = 12
     
     @classmethod
     def form_deck(cls):
         return [Card(*attrs) for attrs in
-                itertools.product(cls.quantity, cls.colours,
-                                  cls.fill, cls.shapes)]
+                itertools.product(cls.numbers, cls.symbols,
+                                  cls.fill, cls.colours)]
 
     @classmethod
     def initial(cls):
@@ -60,12 +60,13 @@ class Board(object):
                 return True
         return False
  
-    def remove_set(self, cards):
+    def remove_set(self, cards, table_size=12):
         assert(self.is_set(cards))
+        print 
         to_del = [i for i in xrange(len(self.table)) if self.table[i] in cards]
         
         for i in to_del[::-1]:
-            if self.deck:
+            if self.deck and len(self.table) <= table_size:
                 self.table[i] = self.deck.pop(0)
             else:
                 self.table.pop(i)
@@ -88,7 +89,7 @@ class Game(object):
             if self.board.deck:
                 self.check()
             
-            self.display_board()
+            self.display()
 
             cards = self.get_user_turn()
             if cards:
