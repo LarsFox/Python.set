@@ -1,8 +1,5 @@
-import os, itertools, random, time
+import os, itertools, random
 from sys import exit
-
-import pygame
-from pygame.locals import *
 
 class Card(object):
     def __init__(self, number, symbol, fill, colour):
@@ -19,7 +16,7 @@ class Board(object):
     numbers = ('1', '2', '3')
     symbols = ('diamond', 'squiggle', 'oval')
     fill = ('empty', 'striped', 'filled')
-    colours = ('Red', 'Green', 'Purple')
+    colours = ('red', 'green', 'purple')
 
     table_size = 12
     
@@ -39,7 +36,7 @@ class Board(object):
     def __init__(self, deck, table):
         self.deck = deck
         self.table = table
-        self.selected = set()
+        self.selected = []
 
     def add_cards(self, quantity=3):
         new_table = self.table + self.deck[:quantity]
@@ -56,13 +53,15 @@ class Board(object):
     def has_set(self):
         for cards in itertools.combinations(self.table, r=3):
             if self.is_set(cards):
-                #return [card.attr for card in cards]   # the cheat line
-                return True
+                return cards
         return False
+
+    def penalty(self, cards):
+        self.deck += cards
+        random.shuffle(deck)
  
     def remove_set(self, cards, table_size=12):
         assert(self.is_set(cards))
-        print 
         to_del = [i for i in xrange(len(self.table)) if self.table[i] in cards]
         
         for i in to_del[::-1]:
@@ -90,6 +89,7 @@ class Game(object):
                 self.check()
             
             self.display()
+            self.keys_controller()
 
             cards = self.get_user_turn()
             if cards:
