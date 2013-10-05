@@ -57,8 +57,7 @@ class Board(object):
         return False
 
     def penalty(self, cards):
-        self.deck += cards
-        random.shuffle(deck)
+        return Board(random.shuffle(self.deck + cards), self.table)
  
     def remove_set(self, cards, table_size=12):
         assert(self.is_set(cards))

@@ -34,6 +34,7 @@ Failing to find the set will take one from you back to deck.
 Start the new one!
 '''.split('\n')
 
+current = 'This turn: '
 last = 'Last: '
 best = 'Best: '
 player = 'Player {}: {}'

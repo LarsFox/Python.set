@@ -43,7 +43,6 @@ size18 = 18
 header_font = pygame.font.Font(maiandra_gd, size18)
 header = header_font.render(strings.header, antialasing, palette['Black'])
 
-
 common_font = pygame.font.Font(maiandra_gd, size16)
 def c_font(text, colour='Black'):
     return common_font.render(text, antialasing, palette[colour])
@@ -168,7 +167,7 @@ class GUIGame(Game):
 
     def reset_vars(self):
         self.clickable = False
-        self.get_user_turn_time = 0
+        self.turn_time = 0
         self.player_turn = None
 
     def display(self):
@@ -184,9 +183,7 @@ class GUIGame(Game):
                 screen, self.board.table, card_start_x, card_start_y)
             self.draw_timers(screen)
 
-            for i in xrange(len(set_buttons)):
-                self.draw_players(screen, i)
-                set_buttons[i].draw(screen)
+            self.draw_players(screen, i)
 
         self.draw_time(screen)
         pygame.display.flip()
@@ -233,10 +230,13 @@ class GUIGame(Game):
             self.cards_drawn = True
 
     def draw_players(self, screen, i):
-        text = strings.player.format(i+1, len(self.players[i]))
-        screen.blit(c_font(text), set_buttons[i].text)
+        for i in xrange(len(set_buttons)):
+            text = strings.player.format(i+1, len(self.players[i]))
+            screen.blit(c_font(text), set_buttons[i].text)
+            set_buttons[i].draw(screen)
 
-    def draw_time(self, screen, x=700, y=548, pt=2, padding=60):
+    # All time roundings come here!
+    def draw_time(self, screen, x=700, y=548, pt=2, padding=54):
         if self.last_time:
             screen.blit(t_font(strings.last, 'Red'), (x-padding, y))
             text = time_str.format(round((self.last_time), pt))
@@ -248,17 +248,23 @@ class GUIGame(Game):
             text = time_str.format(round((self.best_time), pt))
             screen.blit(t_font(text, 'Green'), (x, y))
 
-    def draw_timers(self, screen, x=700, y=530, pt=2, space=3):
-        text = time_str.format(round((time.clock() - self.time), pt))
-        screen.blit(t_font(text, 'Black'), (x, y))
+    def draw_timers(self, screen, x=700, y=530, pt=2, space=3, padding=115):
+        if self.turn_time:
+            num = round(self.turn_time, pt)
 
-        if self.get_user_turn_time:
-            num = (time_limit - (time.clock() - self.get_user_turn_time))
-            text = time_str.format(round(num, pt))
-            card = set_buttons[self.player_turn]
-            x = card.coord[0]
-            y = card.coord[1] + card.size[1] + space
-            screen.blit(t_font(text, 'Red'), (x, y))
+            # Player turn timer
+            timer = (time_limit - (time.clock() - self.turn_time))
+            timer = time_str.format(round(timer, pt))
+            button = set_buttons[self.player_turn]
+            timer_x = button.coord[0]
+            timer_y = button.coord[1] + button.size[1] + space
+            screen.blit(t_font(timer, 'Red'), (timer_x, timer_y))
+
+        else:
+            num = time_str.format(round((time.clock() - self.new_time), pt))
+
+        screen.blit(t_font(strings.current, 'Black'), (x-padding, y))
+        screen.blit(t_font(str(num), 'Black'), (x, y))
 
     def keys_controller(self):
         for event in pygame.event.get():
@@ -281,13 +287,13 @@ class GUIGame(Game):
             # New Game is clicked
             if start_button.rect.collidepoint(event.pos):
                 self.start()
-                self.time = time.clock()
+                self.new_time = time.clock()
                 self.draw_help = False
 
             # Help button is clicked
             if help_button.rect.collidepoint(event.pos):
                 if not self.cards_drawn:
-                    self.time = time.clock()
+                    self.new_time = time.clock()
 
                 if self.draw_help:
                     self.draw_help = False
@@ -300,7 +306,7 @@ class GUIGame(Game):
                     if set_buttons[i].rect.collidepoint(event.pos):
                         self.player_turn = i
                         self.clickable = True
-                        self.get_user_turn_time = time.clock()
+                        self.turn_time = time.clock()
 
     def click_cards(self, event):
         if event.type == MOUSEBUTTONDOWN and event.button == 1:
@@ -335,22 +341,23 @@ class GUIGame(Game):
             if len(self.board.selected) == limit:
                 if self.board.is_set(self.board.selected):
 
-                    self.last_time = time.clock() - self.time
+                    self.last_time = self.get_time - self.new_time
                     if self.best_time > self.last_time or not self.best_time:
                         self.best_time = self.last_time
 
                     self.players[self.player_turn].append(self.board.selected)
 
-                    self.time = time.clock()
+                    self.new_time = time.clock()
                     self.reset_vars()
                     return self.board.selected
 
-            if time.clock() > self.get_user_turn_time + time_limit - err:
-                if self.players[self.player_turn]:
-                    self.board.penalty(self.players[self.player_turn].pop())
-                self.reset_vars()
-                
                 self.board.selected = []
+
+            if time.clock() > self.turn_time + time_limit - err:
+                if self.players[self.player_turn]:
+                    self.board = self.board.penalty(
+                        self.players[self.player_turn].pop())
+                self.reset_vars()
 
     def ask_exit(self):
         self.draw_end_button = True
