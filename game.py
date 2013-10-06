@@ -71,7 +71,7 @@ class Board(object):
         self.reset_status()
 
     def replace_set(self):
-        assert(self.selected)
+        assert(self.deck)
         new_table, new_deck = self.table[:], self.deck[:]
         replacing_card_indexes = [i for i in xrange(len(new_table))
                                     if new_table[i] in self.selected][::-1]

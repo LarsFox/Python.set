@@ -127,7 +127,7 @@ class GUIBoard(Board):
     def form_deck(cls):
         return [GUICard(*attrs) for attrs in
                 itertools.product(cls.numbers, cls.symbols,
-                                  cls.fill, cls.colours)][:12]
+                                  cls.fill, cls.colours)]
 
 # ================================= Example =================================
 example_x, example_y = 415, 45
