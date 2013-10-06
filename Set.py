@@ -292,8 +292,11 @@ class GUIGame(Game):
             ''' To enable the cheat, decomment and press S
                 the cards full names will appear in console.'''
 
-            '''if event.type == KEYDOWN and event.key == K_s:
-                print [card.attr for card in self.board.has_set()]'''
+            if event.type == KEYDOWN and event.key == K_s:
+                print self.board.players
+                
+                print len(self.board.deck)
+                print [card.attr for card in self.board.has_set()]
 
     def click_buttons(self, event):
         if event.type == MOUSEBUTTONDOWN and event.button == 1:

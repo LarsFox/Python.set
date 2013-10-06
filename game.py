@@ -71,17 +71,19 @@ class Board(object):
         self.reset_status()
 
     def replace_set(self):
-        assert(self.deck)
+        assert(self.selected)
+        print 'REP'
         new_table, new_deck = self.table[:], self.deck[:]
         replacing_card_indexes = [i for i in xrange(len(new_table))
                                     if new_table[i] in self.selected][::-1]
 
         for i in replacing_card_indexes:
-            new_deck[i] = new_deck.pop(0)
+            new_table[i] = new_deck.pop(0)
 
         return Board(new_deck, new_table, self.players, self.start_time)
 
     def remove_set(self):
+        print 'REM'
         new_table = [card for card in self.table if card not in self.selected]
         return Board(self.deck, new_table, self.players, self.start_time)
 
@@ -92,8 +94,8 @@ class Board(object):
 
     def penalty(self):
         if self.players.get(self.player_turn, False):
-            new_deck = random.shuffle(
-                self.deck + self.players[self.player_turn].pop())
+            new_deck = self.deck + self.players[self.player_turn].pop()
+            random.shuffle(new_deck)
 
             return Board(new_deck, self.table, self.players, self.start_time)
 
@@ -125,7 +127,6 @@ class Game(object):
 
             # Player claims that he has found the set
             if player_found_set is True:
-
                 # If there's need and posibility to replace, replace.
                 if self.board.deck and len(self.board.table) <= table_size:
                     self.board = self.board.replace_set()
