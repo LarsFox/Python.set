@@ -25,7 +25,7 @@ If there's no set in twelve cards, three more are added.
 If there's still no set, the remaining cards reshuffle.
 
 If a player finds set, click his 'Set!' button.
-You'll have 5 seconds to click your set.
+You'll have 8 seconds to click your set.
 Failing to find the set when 'Set!' is clicked will take one \
 set back to deck.
 

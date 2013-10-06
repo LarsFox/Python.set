@@ -41,7 +41,7 @@ class Board(object):
         self.players = players
         self.selected = []
 
-        self.start_time = start_time
+        self.start_time = time.clock()
 
         self.reset_status()
 
