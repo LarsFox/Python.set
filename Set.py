@@ -11,8 +11,6 @@
 # "If."
 #
 
-import time
-
 import pygame
 from pygame.locals import *
 
@@ -30,6 +28,7 @@ palette = {
 
 icon = pygame.image.load('images/icon.png')
 
+table_limit = 15
 time_limit = 5
 
 # ================================== Fonts ==================================
@@ -128,7 +127,7 @@ class GUIBoard(Board):
     def form_deck(cls):
         return [GUICard(*attrs) for attrs in
                 itertools.product(cls.numbers, cls.symbols,
-                                  cls.fill, cls.colours)]
+                                  cls.fill, cls.colours)][:12]
 
 # ================================= Example =================================
 example_x, example_y = 415, 45
@@ -141,7 +140,16 @@ set_example = [
     GUICard('2', 'oval', 'filled', 'green'),
 ]
 
+
+
 # ================================= GUIGame =================================
+
+# Everything is in here only because it's rarely relative to console game
+# Or at least seem to be non-relative
+# That is why all the drawings/displays/countdowns/roundings are here
+
+# Thing to-do: Timers' roundings kill all the 0 sometimes. Fix
+
 class GUIGame(Game):
     def __init__(self, name, window_size):
         pygame.init()
@@ -149,26 +157,20 @@ class GUIGame(Game):
         pygame.display.set_mode(window_size)
         pygame.display.set_icon(icon)
 
-        # Vars that don't reload with every new game
+        # These vars don't reload with every new game
         self.best_time = 0
         self.last_time = 0
         self.draw_help = True
 
-        # Cards' click area appears after(!) being drawn
+        # The get-click function dies when cards are not drawn
         self.cards_drawn = False
 
-    def start(self, players=3):
-        # Vars that reload with every new game
+    def start(self):
+        # This is some kind of reset.
         self.board = GUIBoard.initial()
         self.cards_drawn = False
-        self.draw_end_button = False
-        self.players = [[] for x in xrange(players)]
-        self.reset_vars()
-
-    def reset_vars(self):
-        self.clickable = False
-        self.turn_time = 0
-        self.player_turn = None
+        self.table_clickable = False    # No card clicks until 'SET!' is called
+        self.draw_end_button = False    # Draws 'No Sets' and blocks the game.
 
     def display(self):
         screen = pygame.display.get_surface()
@@ -176,16 +178,21 @@ class GUIGame(Game):
 
         self.draw_buttons(screen)
 
+        # The display has two states: help is shown / game is shown
         if self.draw_help:
             self.display_start_text(screen)
-        elif self.board.table:
-            self.draw_cards(
-                screen, self.board.table, card_start_x, card_start_y)
+        else:
+            self.draw_players(screen, i)
+            # If there are cards to display, they will be displayed
+            if self.board.table:
+                self.draw_cards(
+                    screen, self.board.table, card_start_x, card_start_y)
+
+        # Timers change with each frame, time doesn't
+        if self.cards_drawn:
+            self.draw_time(screen)
             self.draw_timers(screen)
 
-            self.draw_players(screen, i)
-
-        self.draw_time(screen)
         pygame.display.flip()
 
     def display_start_text(self, screen, x=15, y=15, padding_top=36):
@@ -205,6 +212,8 @@ class GUIGame(Game):
             end_button.draw(screen)
 
     def draw_cards(self, screen, cards, x, y, rows=3, on_table=True):
+        # on_table allowes to draw set_example with the same function,
+        # but without setting clickable areas and selections
         columns = len(cards)/rows
         card_x, card_y = x, y
 
@@ -231,12 +240,12 @@ class GUIGame(Game):
 
     def draw_players(self, screen, i):
         for i in xrange(len(set_buttons)):
-            text = strings.player.format(i+1, len(self.players[i]))
+            text = strings.player.format(i+1, len(self.board.players[i]))
             screen.blit(c_font(text), set_buttons[i].text)
-            set_buttons[i].draw(screen)
+            if not self.draw_end_button:
+                set_buttons[i].draw(screen)
 
-    # All time roundings come here!
-    def draw_time(self, screen, x=700, y=548, pt=2, padding=54):
+    def draw_time(self, screen, x=700, y=548, pt=2, padding=60):
         if self.last_time:
             screen.blit(t_font(strings.last, 'Red'), (x-padding, y))
             text = time_str.format(round((self.last_time), pt))
@@ -248,23 +257,27 @@ class GUIGame(Game):
             text = time_str.format(round((self.best_time), pt))
             screen.blit(t_font(text, 'Green'), (x, y))
 
-    def draw_timers(self, screen, x=700, y=530, pt=2, space=3, padding=115):
-        if self.turn_time:
-            num = round(self.turn_time, pt)
+    def draw_timers(self, screen, x=700, y=530, pt=2, space=3, padding=110):
+        # When the 'Set' button is clicked, the timer stops
+        if self.board.turn_time:
+            num = time_str.format(
+                round(self.board.turn_time - self.board.start_time, pt))
 
-            # Player turn timer
-            timer = (time_limit - (time.clock() - self.turn_time))
-            timer = time_str.format(round(timer, pt))
-            button = set_buttons[self.player_turn]
-            timer_x = button.coord[0]
-            timer_y = button.coord[1] + button.size[1] + space
-            screen.blit(t_font(timer, 'Red'), (timer_x, timer_y))
+            # Player's turn timer
+            if not self.draw_help:
+                timer = (time_limit - (time.clock() - self.board.turn_time))
+                timer = time_str.format(round(timer, pt))
+                button = set_buttons[self.board.player_turn]
+                timer_x = button.coord[0]
+                timer_y = button.coord[1] + button.size[1] + space
+                screen.blit(t_font(timer, 'Red'), (timer_x, timer_y))
 
         else:
-            num = time_str.format(round((time.clock() - self.new_time), pt))
+            num = time_str.format(
+                round((time.clock() - self.board.start_time), pt))
 
         screen.blit(t_font(strings.current, 'Black'), (x-padding, y))
-        screen.blit(t_font(str(num), 'Black'), (x, y))
+        screen.blit(t_font(num, 'Black'), (x, y))
 
     def keys_controller(self):
         for event in pygame.event.get():
@@ -273,7 +286,7 @@ class GUIGame(Game):
 
             self.click_buttons(event)
 
-            if self.cards_drawn and self.clickable:
+            if self.cards_drawn and self.table_clickable:
                 self.click_cards(event)
 
             ''' To enable the cheat, decomment and press S
@@ -287,26 +300,27 @@ class GUIGame(Game):
             # New Game is clicked
             if start_button.rect.collidepoint(event.pos):
                 self.start()
-                self.new_time = time.clock()
                 self.draw_help = False
 
             # Help button is clicked
             if help_button.rect.collidepoint(event.pos):
+                # Very first reading of rules shouldn't count as turn's time.
                 if not self.cards_drawn:
-                    self.new_time = time.clock()
+                    self.board.start_time = time.clock()
 
                 if self.draw_help:
                     self.draw_help = False
                 else:
                     self.draw_help = True
 
-            # Set button is clicked
-            if not self.clickable and self.cards_drawn:
+            # Set button is clicked, when we have cards and game to play
+            if all([not self.table_clickable,
+                        self.cards_drawn, not self.draw_end_button]):
+
                 for i in xrange(len(set_buttons)):
                     if set_buttons[i].rect.collidepoint(event.pos):
-                        self.player_turn = i
-                        self.clickable = True
-                        self.turn_time = time.clock()
+                        self.table_clickable = True
+                        self.board.set_status(i, time.clock())
 
     def click_cards(self, event):
         if event.type == MOUSEBUTTONDOWN and event.button == 1:
@@ -318,7 +332,9 @@ class GUIGame(Game):
                     else:
                         self.board.selected.remove(card)
 
-    def check(self, table_limit=15, table_size=12, quantity=3):
+    def check(self):
+        # Chooses whether to add more cards or not (based on real-game rules)
+
         in_set = self.board.has_set()
         # If we have less than 12 cards, we add more
         if len(self.board.table) < table_size:
@@ -336,28 +352,38 @@ class GUIGame(Game):
             self.board = Board(new_deck, new_table)
         assert(len(self.board.table) <= table_limit)
 
-    def get_user_turn(self, limit=3, err=0.05):
-        if self.clickable:
-            if len(self.board.selected) == limit:
+    def record_time(self):
+        self.last_time = self.board.turn_time - self.board.start_time
+        if self.best_time > self.last_time or not self.best_time:
+            self.best_time = self.last_time
+
+    def get_user_turn(self, cards_per_turn=3, err=0.05):
+        # The input in GUIGame differs a lot from the ConsoleGame's one, e.g.
+        # GUI: update board.selected with each click
+        # Console: board.selected = input
+
+        if self.table_clickable:
+            # ...so the valid form checking is much easier:
+            if len(self.board.selected) == cards_per_turn:
                 if self.board.is_set(self.board.selected):
+                    self.record_time()
 
-                    self.last_time = self.get_time - self.new_time
-                    if self.best_time > self.last_time or not self.best_time:
-                        self.best_time = self.last_time
+                    self.table_clickable = False
 
-                    self.players[self.player_turn].append(self.board.selected)
+                    self.board.success()
+                    return True
 
-                    self.new_time = time.clock()
-                    self.reset_vars()
-                    return self.board.selected
-
+                # Player can missclick, give him another try.
                 self.board.selected = []
 
-            if time.clock() > self.turn_time + time_limit - err:
-                if self.players[self.player_turn]:
-                    self.board = self.board.penalty(
-                        self.players[self.player_turn].pop())
-                self.reset_vars()
+            # in console game there's no turn timer
+            # the set form is whether correct or not.
+            elif time.clock() > self.board.turn_time + time_limit - err:
+                self.table_clickable = False
+                self.board.selected = []
+                return False
+
+        return None
 
     def ask_exit(self):
         self.draw_end_button = True

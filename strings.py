@@ -26,7 +26,8 @@ If there's still no set, the remaining cards reshuffle.
 
 If a player finds set, click his 'Set!' button.
 You'll have 5 seconds to click your set.
-Failing to find the set will take one from you back to deck.
+Failing to find the set when 'Set!' is clicked will take one \
+set back to deck.
 
 'Help':          Toggle on/off this screen.
 'New Game': Shuffle the deck and start a new round.
