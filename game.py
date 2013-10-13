@@ -1,8 +1,14 @@
-import os, itertools, random, time
-from sys import exit
+import itertools
+import os
+import random
+import time
 
+players = 3
 table_size = 12
 quantity = 3
+
+set_found = 'Set'
+set_not_found = 'No set'
 
 class Card(object):
     def __init__(self, number, symbol, fill, colour):
@@ -20,38 +26,22 @@ class Board(object):
     symbols = ('diamond', 'squiggle', 'oval')
     fill = ('empty', 'striped', 'filled')
     colours = ('red', 'green', 'purple')
-    
-    @classmethod
-    def form_deck(cls):
-        return [Card(*attrs) for attrs in
-                itertools.product(cls.numbers, cls.symbols,
-                                  cls.fill, cls.colours)]
 
     @classmethod
-    def initial(cls, players=3):
-        cards = cls.form_deck()
+    def initial(cls, card_type):
+        def form_deck():
+            return [card_type(*attrs) for attrs in
+                    itertools.product(cls.numbers, cls.symbols,
+                                      cls.fill, cls.colours)]
+        cards = form_deck()
         random.shuffle(cards)
         table, deck = cards[:table_size], cards[table_size:]
-        players = {x: [] for x in xrange(players)}
-        return cls(deck, table, players, time.clock())
+        return cls(deck, table)
 
-    def __init__(self, deck, table, players, start_time):
+    def __init__(self, deck, table):
         self.deck = deck
         self.table = table
-        self.players = players
         self.selected = []
-
-        self.start_time = time.clock()
-
-        self.reset_status()
-
-    def reset_status(self):
-        self.player_turn = None
-        self.turn_time = 0
-
-    def set_status(self, player_id, turn_time):
-        self.player_turn = player_id
-        self.turn_time = turn_time
 
     def is_set(self, cards):
         assert(len(cards) == 3)
@@ -63,16 +53,12 @@ class Board(object):
     def has_set(self):
         for cards in itertools.combinations(self.table, r=3):
             if self.is_set(cards):
-                return cards
+                return True
+                #return cards   # cheat
         return False
 
-    def success(self):
-        self.players[self.player_turn].append(self.selected)
-        self.reset_status()
-
     def replace_set(self):
-        assert(self.selected)
-        print 'REP'
+        assert(self.selected and self.deck)
         new_table, new_deck = self.table[:], self.deck[:]
         replacing_card_indexes = [i for i in xrange(len(new_table))
                                     if new_table[i] in self.selected][::-1]
@@ -80,66 +66,91 @@ class Board(object):
         for i in replacing_card_indexes:
             new_table[i] = new_deck.pop(0)
 
-        return Board(new_deck, new_table, self.players, self.start_time)
+        return Board(new_deck, new_table)
 
     def remove_set(self):
-        print 'REM'
         new_table = [card for card in self.table if card not in self.selected]
-        return Board(self.deck, new_table, self.players, self.start_time)
+        return Board(self.deck, new_table)
 
     def add_cards(self):
         new_table = self.table + self.deck[:quantity]
         new_deck = self.deck[quantity:]
-        return Board(new_deck, new_table, self.players, self.start_time)
+        return Board(new_deck, new_table)
 
-    def penalty(self):
-        if self.players.get(self.player_turn, False):
-            new_deck = self.deck + self.players[self.player_turn].pop()
-            random.shuffle(new_deck)
-
-            return Board(new_deck, self.table, self.players, self.start_time)
-
-        return Board(self.deck, self.table, self.players, self.start_time)
+    def penalty(self, penalty_set):
+        new_deck = self.deck + penalty_set
+        random.shuffle(new_deck)
+        return Board(new_deck, self.table)
 
     def has_more_turns(self):
         return self.deck or self.has_set()
+
+
+
+# /////////////////////////////////// Game //////////////////////////////////
+#
+# A short brief to what's going on in here:
+# The main thing is the main() function, so.
+#
+# Game spawns 12 cards. Game has launched.
+#
+# First of all, check() if there's need and possibility to add cards.
+# If there are no set on a table, game adds until there's Set.
+# Max table size = 21, it gives 100% chance of Set in it.
+#
+# After all table cards are drawn, input form proceeds.
+# If a player provided the game with any input, input is checked to be valid.
+# Then it's checked to be a Set.
+# If it is not a Set, the player gives one Set from his pocket back to deck.
+# If it is a Set, the player gets it in his pocket.
+#
+# The Set is 'replaced'. It means that new cards go to the same positions where
+# the removed Set's cards were.
+# If the deck is empty, Set is removed and game continues until no Sets left.
+#
+# In both cases, if there was any input, prepare the game for the next turn.
 
 class Game(object):
     def __init__(self):
         self.board = None
  
-    def start(self):
-        self.board = Board.initial()
+    def start(self, players):
+        self.board = Board.initial(Card)
+        self.turns_times = [0]
+        self.players = {x: [] for x in xrange(players)}
 
     def main(self):
-        self.start()
+        self.start(players)
 
         while True:
-            # If the deck isn't empty, check whether there's need to add cards.
             if self.board.deck:
                 self.check()
 
-            # Draw/print + grab the keys.
             self.display()
-            self.keys_controller()
+            self.key_input()
 
             player_found_set = self.get_user_turn()
 
-            # Player claims that he has found the set
-            if player_found_set is True:
-                # If there's need and posibility to replace, replace.
+            if player_found_set == set_found:
+                self.players[self.player_turn].append(self.board.selected)
+
                 if self.board.deck and len(self.board.table) <= table_size:
                     self.board = self.board.replace_set()
+
                 else:
                     self.board = self.board.remove_set()
 
-            # If he has mistaken, punish him a bit.
-            elif player_found_set is False:
-                self.board = self.board.penalty()
+                self.turns_times.append(self.set_time - self.start_turn_time)
+                self.start_turn_time = time.clock()
 
-            # And if he did nothing and keeps thinking, don't reset anything.
-            if player_found_set is not None:
-                self.board.reset_status()
+            elif player_found_set == set_not_found:
+                if self.players[self.player_turn]:
+                    removed_set = self.players[self.player_turn].pop(0)
+                    self.board = self.board.penalty(removed_set)
+
+            if player_found_set:
+                self.player_turn = None
+                self.set_time = 0
 
             if not self.board.has_more_turns():
                 self.ask_exit()

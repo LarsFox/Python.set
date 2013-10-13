@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 # probably there's need in languages
+
 header = '''Welcome to the Set game!'''
 
-# Common text, data is with no prefixes.
 start = '''The goal of this game is to find... sets!
 
 You'll be shown some cards as you press 'New Game'
@@ -33,9 +33,9 @@ set back to deck.
 'New Game': Shuffle the deck and start a new round.
 'No sets':       Game is over, you have no more sets on the table. \
 Start the new one!
-'''.split('\n')
+'''
 
-current = 'This turn: '
-last = 'Last: '
-best = 'Best: '
-player = 'Player {}: {}'
+current = 'Turn:'
+last = 'Last:'
+best = 'Best:'
+total = 'Total:'

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# The Set game.
+# The Set! game.
 # using pygame.
 #
 # Leo Motovksikh, 2013
@@ -11,97 +11,27 @@
 # "If."
 #
 
+import itertools
+import sys
+import time
+
 import pygame
 from pygame.locals import *
 
-from game import *
-import strings
+from data import icon, palette, \
+                 common_font, time_font, round_time, \
+                 header, lines, size16, size18, \
+                 empty_card, selection, card_rows, \
+                 card_width, card_height, card_space, \
+                 card_start_x, card_start_y, \
+                 name_template, symbol_x, symbol_y, \
+                 symbol_width, symbol_height, symbol_space, \
+                 start_button, end_button, help_button, set_buttons
 
-game_name = "Set"
-window_size = (800, 600)
-palette = {
-    'Light Grey':   (200, 200, 200),    'green':        ( 55, 205,  65),
-    'red':          (255,   0, 120),    'purple':       (120, 120, 210),
-    'Black':        (  0,   0,   0),    'Empty':        (0,  0,  0,  0),
-    'Red':          (240,  50,  50),    'Green':        (  0, 150,  17)
-}
+from game import Card, Board, Game, \
+                 players, table_size, set_found, set_not_found
 
-icon = pygame.image.load('images/icon.png')
-
-table_limit = 15
-time_limit = 8
-
-# ================================== Fonts ==================================
-pygame.font.init()
-consolas = 'images/consolas.ttf'
-maiandra_gd = 'images/maiandra_gd.ttf'
-antialasing = True
-size16 = 16
-size18 = 18
-
-header_font = pygame.font.Font(maiandra_gd, size18)
-header = header_font.render(strings.header, antialasing, palette['Black'])
-
-common_font = pygame.font.Font(maiandra_gd, size16)
-def c_font(text, colour='Black'):
-    return common_font.render(text, antialasing, palette[colour])
-
-time_str = '{:0<4}'
-time_font = pygame.font.Font(consolas, size18)
-
-def t_font(text, colour):
-    return time_font.render(text, antialasing, palette[colour])
-
-# =================================== Card ==================================
-empty_card = pygame.image.load('images/card.png')
-selection = pygame.image.load('images/selection.png')
-card_width, card_height, card_space = 106, 160, 10
-card_start_x, card_start_y = 170, 15
-
-# ============================= Symbols in card =============================
-name_template = 'images/{}{}.png'.format
-symbol_width, symbol_height, symbol_space = 80, 42, 4
-symbol_x = (card_width - symbol_width)/2
-symbol_y = {
-    '1': [(card_height - symbol_height)/2],
-    '2': [(card_height - 2*symbol_height - symbol_space)/2, 
-          (card_height + symbol_space)/2],
-    '3': [(card_height - 3*symbol_height - 2*symbol_space)/2,
-          (card_height - symbol_height)/2,
-          (card_height + symbol_height + 2*symbol_space)/2]
-}
-
-# ================================= Buttons =================================
-class Button(object):
-    def draw(self, screen):
-        self.rect = pygame.Rect(self.coord, self.size)
-        screen.blit(self.image, self.coord)
-
-class DownButton(Button):
-    def __init__(self, image, x, y=520, size=(216, 57)):
-        self.image = pygame.image.load(image)
-        self.coord = (x, y)
-        self.size = size
-
-start_button = DownButton('images/start.png', 170)
-
-end_button = DownButton('images/over.png', 396)
-
-help_button = DownButton('images/help.png', 15, size=(140, 57))
-
-class SetButton(Button):
-    def __init__(self, y):
-        self.image = pygame.image.load('images/set.png')
-        self.coord = [20, y]
-        self.size = (130, 42)
-
-    @property
-    def text(self, space=5):
-        return self.coord[0], self.coord[1] - size16 - space
-
-set_buttons = [SetButton(74+i*170) for i in xrange(3)]
-
-# =============================== GUI Classes ===============================
+# ================================= Example =================================
 class GUICard(Card):
     @property
     def image(self):
@@ -122,15 +52,8 @@ class GUICard(Card):
 
         return image
 
-class GUIBoard(Board):
-    @classmethod
-    def form_deck(cls):
-        return [GUICard(*attrs) for attrs in
-                itertools.product(cls.numbers, cls.symbols,
-                                  cls.fill, cls.colours)]
-
-# ================================= Example =================================
 example_x, example_y = 415, 45
+example_rows = 2
 set_example = [
     GUICard('1', 'diamond', 'empty', 'green'),
     GUICard('2', 'squiggle', 'striped', 'purple'),
@@ -141,14 +64,45 @@ set_example = [
 ]
 
 
+# ///////////////////////////////// GUIGame /////////////////////////////////
 
-# ================================= GUIGame =================================
+game_name = "Set!"
 
 # Everything is in here only because it's rarely relative to console game
 # Or at least seem to be non-relative
 # That is why all the drawings/displays/countdowns/roundings are here
+#
+# Remember:
+# GUIGame differs a lot with Console game.
+#
+# The display can draw help or can draw table.
 
-# Thing to-do: Timers' roundings kill all the 0 sometimes. Fix
+help = 'help'
+table = 'table'
+
+# check() function differs a lot, because of the screen size limit.
+# In real game players can add up to 21 card if there're still no sets.
+# Same with ConsoleGame.
+# In GUIGame there's table_limit which is used because of the window size.
+# So the game will never draw more than it could handle in.
+
+window_size = (800, 600)
+table_limit = 15
+fps = 30
+
+# The input is also different.
+# In ConsoleGame you make an input which refers to some cards.
+# The input can be valid or not.
+# In GUIGame user clicks 'Set!' button to show that he has found a set.
+# Then he has a few seconds to click on the valid cards.
+
+time_limit = 8
+
+# Timers are refreshing too fast, so the specific area is created for them.
+
+timer_area_coord = (640, 520)
+
+# Thing to-do: Timers' roundings kill all the 0 sometimes
 
 class GUIGame(Game):
     def __init__(self, name, window_size):
@@ -156,64 +110,135 @@ class GUIGame(Game):
         pygame.display.set_caption(name)
         pygame.display.set_mode(window_size)
         pygame.display.set_icon(icon)
+        self.pyclock = pygame.time.Clock()
 
-        # These vars don't reload with every new game
-        self.best_time = 0
-        self.last_time = 0
-        self.draw_help = True
-
-        # The get-click function dies when cards are not drawn
-        self.cards_drawn = False
-
-    def start(self):
-        # This is some kind of reset.
-        self.board = GUIBoard.initial()
-        self.cards_drawn = False
-        self.table_clickable = False    # No card clicks until 'SET!' is called
-        self.draw_end_button = False    # Draws 'No Sets' and blocks the game.
-
-    def display(self):
         screen = pygame.display.get_surface()
         screen.fill(palette['Light Grey'])
 
-        self.draw_buttons(screen)
+        # Saves each turn's time; doesn't reset with each new game.
+        self.turns_times = []
 
-        # The display has two states: help is shown / game is shown
-        if self.draw_help:
-            self.display_start_text(screen)
+        self.display_draws = help       # Show help on launch.
+        self.cards_drawn = False        # Wait until the game is ready
+
+    # ============================ Game Mechanics ===========================
+    def start(self, players):
+        self.board = Board.initial(GUICard)
+
+        # Clear the ingame data.
+        self.start_turn_time = time.clock()
+        self.set_time = 0
+        self.players = {x: [] for x in xrange(players)}
+
+        self.cards_drawn = False        # Game has run succesfully;
+        self.table_clickable = False    # Select cards after clicking 'Set!';
+        self.draw_end_button = False    # Draws 'No Sets' and blocks the game;
+
+        self.player_turn = None         # is equal to player_id or None
+
+
+    def check(self):
+        in_set = self.board.has_set()
+        if len(self.board.table) < table_size:
+            self.board = self.board.add_cards()
+
+        elif not in_set and len(self.board.table) < table_limit:
+            self.board = self.board.add_cards()
+
+        elif not in_set and len(self.board.table) == table_limit:
+            cards = random.shuffle(self.board.deck + self.board.table)
+            new_deck = cards[table_size:]
+            new_table = cards[:table_size]
+            self.board = Board(new_deck, new_table)
+
+        assert(len(self.board.table) <= table_limit)
+
+    def get_user_turn(self, cards_per_turn=3, err=0.05):
+        if self.table_clickable:
+            if len(self.board.selected) == cards_per_turn:
+                if self.board.is_set(self.board.selected):
+                    self.table_clickable = False
+                    return set_found
+
+                # Player can missclick
+                self.board.selected = []
+
+            elif time.clock() > self.set_time + time_limit - err:
+                self.table_clickable = False
+                self.board.selected = []
+                return set_not_found
+
+    def ask_exit(self):
+        self.draw_end_button = True
+
+
+    # ============================ Drawings Tree ============================
+    def display(self):
+        def draw_start_text(x=15, y=15, padding_top=36):
+            screen.blit(header, (x, y))
+            y += padding_top
+
+            for line in lines['start']:
+                screen.blit(line, (x, y))
+                y += size16
+
+        def draw_buttons():
+            help_button.draw(screen)
+            start_button.draw(screen)
+            if self.draw_end_button:
+                end_button.draw(screen)
+
+        def draw_players():
+            for i in xrange(len(set_buttons)):
+                text = lines['player'].format(i+1, len(self.players[i]))
+                screen.blit(common_font(text), set_buttons[i].text)
+                if not self.draw_end_button:
+                    set_buttons[i].draw(screen)
+
+
+        # As it mentioned in pygame documentation, it helps the CPU
+        self.pyclock.tick(fps)
+        screen = pygame.display.get_surface()
+        screen.fill(palette['Light Grey'])
+
+        draw_buttons()
+
+        if self.display_draws == help:
+            draw_start_text()
+            self.draw_cards(screen, False)
+
         else:
-            self.draw_players(screen, i)
+            draw_players()
             # If there are cards to display, they will be displayed
             if self.board.table:
-                self.draw_cards(
-                    screen, self.board.table, card_start_x, card_start_y)
+                self.draw_cards(screen)
 
-        # Timers change with each frame, time doesn't
         if self.cards_drawn:
-            self.draw_time(screen)
-            self.draw_timers(screen)
+            self.draw_turn_timer(screen)
+            self.draw_stats(screen)
+            self.set_countdown(screen)
 
         pygame.display.flip()
 
-    def display_start_text(self, screen, x=15, y=15, padding_top=36):
-        screen.blit(header, (x, y))
-        y += padding_top
 
-        for line in strings.start:
-            screen.blit(c_font(line), (x, y))
-            y += size16
 
-        self.draw_cards(screen, set_example, example_x, example_y, 2, False)
+    # ========================= Draw Cards Function =========================
+    # This function is on module level because it is also used in drawing
+    # set_example in help menu (draw_table=False).
+    #
+    # With draw_table=True draws selections, creates a card click-area
+    # and allowes the game to launch safely (self.cards_drawn = True).
 
-    def draw_buttons(self, screen):
-        help_button.draw(screen)
-        start_button.draw(screen)
-        if self.draw_end_button:
-            end_button.draw(screen)
+    def draw_cards(self, screen, draw_table=True):
+        if draw_table:
+            x, y = card_start_x, card_start_y
+            rows = card_rows
+            cards = self.board.table
+        else:
+            x, y = example_x, example_y
+            rows = example_rows
+            cards = set_example
 
-    def draw_cards(self, screen, cards, x, y, rows=3, on_table=True):
-        # on_table allowes to draw set_example with the same function,
-        # but without setting clickable areas and selections
         columns = len(cards)/rows
         card_x, card_y = x, y
 
@@ -223,7 +248,7 @@ class GUIGame(Game):
                 card = cards[i]
                 screen.blit(card.image, (card_x, card_y))
 
-                if on_table:
+                if draw_table:
                     card.rect = pygame.Rect(
                         (card_x, card_y), (card_width, card_height))
 
@@ -235,95 +260,98 @@ class GUIGame(Game):
             card_x = x
             card_y += card_height + card_space
 
-        if on_table:
+        if draw_table and not self.cards_drawn:
             self.cards_drawn = True
 
-    def draw_players(self, screen, i):
-        for i in xrange(len(set_buttons)):
-            text = strings.player.format(i+1, len(self.board.players[i]))
-            screen.blit(c_font(text), set_buttons[i].text)
-            if not self.draw_end_button:
-                set_buttons[i].draw(screen)
 
-    def draw_time(self, screen, x=700, y=548, pt=2, padding=60):
-        if self.last_time:
-            screen.blit(t_font(strings.last, 'Red'), (x-padding, y))
-            text = time_str.format(round((self.last_time), pt))
-            screen.blit(t_font(text, 'Red'), (x, y))
+    # =============================== Statuses ==============================
 
-        if self.best_time:
+    # The size of this area is exactly to fit in the refreshing timer. 
+    @property
+    def timer_area(self, x=160, y=18):
+        area = pygame.Surface((x, y))
+        area.fill(palette['Light Grey'])
+        return area
+
+    def draw_turn_timer(self, screen, x=60, y=0, padding=60):
+        timer_area = self.timer_area
+
+        # Turn's timer stops when 'Set!' is clicked.
+        if not self.draw_end_button:
+            if self.set_time:
+                current_time = round_time(self.set_time - self.start_turn_time)
+
+            else:
+                current_time = round_time(time.clock() - self.start_turn_time)
+
+            timer_area.blit(lines['current'], (x-padding, y))
+            timer_area.blit(time_font(current_time, 'Black'), (x, y))
+
+            screen.blit(timer_area, timer_area_coord)
+
+    def draw_stats(self, screen, x=700, y=538):
+        def draw_stat(text, num, x, y, colour='Black', padding=60):
+            screen.blit(text, (x-padding, y))
+            screen.blit(time_font(num, colour), (x, y))
+
+
+        if self.turns_times:
+            last_time = round_time(self.turns_times[-1])
+            draw_stat(lines['last'], last_time, x, y, 'Red')
+
             y += size18
-            screen.blit(t_font(strings.best, 'Green'), (x-padding, y))
-            text = time_str.format(round((self.best_time), pt))
-            screen.blit(t_font(text, 'Green'), (x, y))
 
-    def draw_timers(self, screen, x=700, y=530, pt=2, space=3, padding=110):
-        # When the 'Set' button is clicked, the timer stops
-        if self.board.turn_time:
-            num = time_str.format(
-                round(self.board.turn_time - self.board.start_time, pt))
+            best_time = round_time(min(self.turns_times))
+            draw_stat(lines['best'], best_time, x, y, 'Green')
 
-            # Player's turn timer
-            if not self.draw_help:
-                timer = (time_limit - (time.clock() - self.board.turn_time))
-                timer = time_str.format(round(timer, pt))
-                button = set_buttons[self.board.player_turn]
-                timer_x = button.coord[0]
-                timer_y = button.coord[1] + button.size[1] + space
-                screen.blit(t_font(timer, 'Red'), (timer_x, timer_y))
+            y += size18
 
-        else:
-            num = time_str.format(
-                round((time.clock() - self.board.start_time), pt))
+            # The only word one symbol longer.
+            total = str(len(self.turns_times))
+            draw_stat(lines['total'], total, x, y, 'Emerald', padding=70)
 
-        screen.blit(t_font(strings.current, 'Black'), (x-padding, y))
-        screen.blit(t_font(num, 'Black'), (x, y))
+    def set_countdown(self, screen, space=3):
+        # Display side turn timer when the 'Set!' button is clicked.
+        if self.display_draws == table and self.player_turn is not None:
+            button = set_buttons[self.player_turn]
+            timer_x = button.coord[0]
+            timer_y = button.coord[1] + button.size[1] + space
+            
+            timer = round_time(time_limit - (time.clock() - self.set_time))
+            screen.blit(time_font(timer, 'Red'), (timer_x, timer_y))
 
-    def keys_controller(self):
-        for event in pygame.event.get():
-            if event.type == QUIT:
-                exit()
 
-            self.click_buttons(event)
 
-            if self.cards_drawn and self.table_clickable:
-                self.click_cards(event)
-
-            ''' To enable the cheat, decomment and press S
-                the cards full names will appear in console.'''
-
-            '''if event.type == KEYDOWN and event.key == K_s:
-                print [card.attr for card in self.board.has_set()]'''
-
-    def click_buttons(self, event):
-        if event.type == MOUSEBUTTONDOWN and event.button == 1:
-            # New Game is clicked
+    # =========================== Keys Controller ===========================
+    def key_input(self):
+        def click_buttons():
+            # New Game is clicked.
             if start_button.rect.collidepoint(event.pos):
-                self.start()
-                self.draw_help = False
+                self.start(players)
+                self.display_draws = table
 
-            # Help button is clicked
+            # Help button is clicked.
             if help_button.rect.collidepoint(event.pos):
-                # Very first reading of rules shouldn't count as turn's time.
+                # Very first reading of rules doesn't count as turn's time.
                 if not self.cards_drawn:
-                    self.board.start_time = time.clock()
+                    self.turns_times = [time.clock()]
 
-                if self.draw_help:
-                    self.draw_help = False
+                if self.display_draws == help:
+                    self.display_draws = table
                 else:
-                    self.draw_help = True
+                    self.display_draws = help
 
-            # Set button is clicked, when we have cards and game to play
+            # 'Set!' button is clickable, when we have cards and game to play.
             if all([not self.table_clickable,
                         self.cards_drawn, not self.draw_end_button]):
 
                 for i in xrange(len(set_buttons)):
                     if set_buttons[i].rect.collidepoint(event.pos):
                         self.table_clickable = True
-                        self.board.set_status(i, time.clock())
+                        self.player_turn = i
+                        self.set_time = time.clock()
 
-    def click_cards(self, event):
-        if event.type == MOUSEBUTTONDOWN and event.button == 1:
+        def click_cards():
             for card in self.board.table:
                 if card.rect.collidepoint(event.pos):
 
@@ -332,61 +360,21 @@ class GUIGame(Game):
                     else:
                         self.board.selected.remove(card)
 
-    def check(self):
-        # Chooses whether to add more cards or not (based on real-game rules)
 
-        in_set = self.board.has_set()
-        # If we have less than 12 cards, we add more
-        if len(self.board.table) < table_size:
-            self.board = self.board.add_cards()
+        # Main pygame loop
+        for event in pygame.event.get():
+            if event.type == QUIT:
+                sys.exit()
 
-        # Based on window size: if 12 <= cards < 15 is not enough, we add more.
-        elif not in_set and len(self.board.table) < table_limit:
-            self.board = self.board.add_cards()
+            if event.type == MOUSEBUTTONDOWN and event.button == 1:
 
-        # And if 15 cards is not enough, we'd better shuffle the deck
-        elif not in_set and len(self.board.table) == table_limit:
-            cards = random.shuffle(self.board.deck + self.board.table)
-            new_deck = cards[table_size:]
-            new_table = cards[:table_size]
-            self.board = Board(new_deck, new_table)
-        assert(len(self.board.table) <= table_limit)
+                click_buttons()
 
-    def record_time(self):
-        self.last_time = self.board.turn_time - self.board.start_time
-        if self.best_time > self.last_time or not self.best_time:
-            self.best_time = self.last_time
+                if self.table_clickable:
+                    click_cards()
 
-    def get_user_turn(self, cards_per_turn=3, err=0.05):
-        # The input in GUIGame differs a lot from the ConsoleGame's one, e.g.
-        # GUI: update board.selected with each click
-        # Console: board.selected = input
-
-        if self.table_clickable:
-            # ...so the valid form checking is much easier:
-            if len(self.board.selected) == cards_per_turn:
-                if self.board.is_set(self.board.selected):
-                    self.record_time()
-
-                    self.table_clickable = False
-
-                    self.board.success()
-                    return True
-
-                # Player can missclick, give him another try.
-                self.board.selected = []
-
-            # in console game there's no turn timer
-            # the set form is whether correct or not.
-            elif time.clock() > self.board.turn_time + time_limit - err:
-                self.table_clickable = False
-                self.board.selected = []
-                return False
-
-        return None
-
-    def ask_exit(self):
-        self.draw_end_button = True
+            #if event.type == KEYDOWN and event.key == K_s:     # cheat
+                #print [card.attr for card in self.board.has_set()]
 
 game = GUIGame(game_name, window_size)
 game.main()
