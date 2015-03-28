@@ -3,12 +3,12 @@ import os
 import random
 import time
 
-players = 3
-table_size = 12
-quantity = 3
+PLAYERS = 3
+TABLE_SIZE = 12
+QUANTITY = 3
 
-set_found = 'Set'
-set_not_found = 'No set'
+SET_FOUND = 'Set'
+SET_NOT_FOUND = 'No set'
 
 class Card(object):
     def __init__(self, number, symbol, fill, colour):
@@ -35,7 +35,7 @@ class Board(object):
                                       cls.fill, cls.colours)]
         cards = form_deck()
         random.shuffle(cards)
-        table, deck = cards[:table_size], cards[table_size:]
+        table, deck = cards[:TABLE_SIZE], cards[TABLE_SIZE:]
         return cls(deck, table)
 
     def __init__(self, deck, table):
@@ -73,8 +73,8 @@ class Board(object):
         return Board(self.deck, new_table)
 
     def add_cards(self):
-        new_table = self.table + self.deck[:quantity]
-        new_deck = self.deck[quantity:]
+        new_table = self.table + self.deck[:QUANTITY]
+        new_deck = self.deck[QUANTITY:]
         return Board(new_deck, new_table)
 
     def penalty(self, penalty_set):
@@ -114,13 +114,14 @@ class Game(object):
     def __init__(self):
         self.board = None
  
-    def start(self, players):
+    # Overridden in GUIGame
+    def start(self, PLAYERS):
         self.board = Board.initial(Card)
         self.turns_times = [0]
-        self.players = {x: [] for x in xrange(players)}
+        self.players = {x: [] for x in xrange(PLAYERS)}
 
     def main(self):
-        self.start(players)
+        self.start(PLAYERS)
 
         while True:
             if self.board.deck:
@@ -131,10 +132,10 @@ class Game(object):
 
             player_found_set = self.get_user_turn()
 
-            if player_found_set == set_found:
+            if player_found_set == SET_FOUND:
                 self.players[self.player_turn].append(self.board.selected)
 
-                if self.board.deck and len(self.board.table) <= table_size:
+                if self.board.deck and len(self.board.table) <= TABLE_SIZE:
                     self.board = self.board.replace_set()
 
                 else:
@@ -143,7 +144,7 @@ class Game(object):
                 self.turns_times.append(self.set_time - self.start_turn_time)
                 self.start_turn_time = time.clock()
 
-            elif player_found_set == set_not_found:
+            elif player_found_set == SET_NOT_FOUND:
                 if self.players[self.player_turn]:
                     removed_set = self.players[self.player_turn].pop(0)
                     self.board = self.board.penalty(removed_set)
@@ -155,12 +156,18 @@ class Game(object):
             if not self.board.has_more_turns():
                 self.ask_exit()
  
+    # Overridden in GUIGame
     def check(self):
         while not self.board.has_set():
             self.board = self.board.add_cards()
 
+    # Overridden in GUIGame
     def get_user_turn(self):
         while True:
             cards = self.ask_for_cards()
             if self.board.is_set(cards):
                 return cards
+
+    # Overridden in GUIGame
+    def ask_exit(self):
+        pass
